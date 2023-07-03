@@ -1,6 +1,6 @@
 # Tinytorch
 
-Mini-PyTorch is a lightweight implementation of PyTorch, a popular deep learning framework. It provides a simplified version of key functionality found in PyTorch, allowing users to understand the underlying concepts and build basic neural networks.
+Tinytorch is a lightweight implementation of PyTorch, a popular deep learning framework. It provides a simplified version of key functionality found in PyTorch, allowing users to understand the underlying concepts and build basic neural networks.
 
 ## Features
 
