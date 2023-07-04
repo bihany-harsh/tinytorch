@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="tinytorch",
     version="0.1.0",
-    author="Harsh Bihant",
+    author="Harsh Bihany",
     author_email="harshbihany7@gmail.com",
     description="A tiny version of torch",
     long_description=long_description,
