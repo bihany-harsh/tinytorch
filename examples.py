@@ -1,6 +1,7 @@
 from tinytorch import tensor
 import torch
 import numpy as np
+import tinytorch.optim as optim
 
 t1 = tensor.Tensor([[1, 2, 3], [4, 5, 6]])
 t2 = tensor.Tensor([1, 4, 7])
@@ -28,7 +29,12 @@ w1 = tensor.Tensor([-1.0, 3.0], requires_grad=True)
 x2 = tensor.Tensor([0.0, 1.2], requires_grad=True)
 w2 = tensor.Tensor([-1.0, -1.5], requires_grad=True)
 b = tensor.Tensor([5.0, 7.0], requires_grad=True)
-y = 2*x1*w1 + x2*w2 + b
+y = x1*w1 + x2*w2 + b
 print(y)
+parameters = [w1, w2, b]
+sgd = optim.SGD(parameters=parameters, lr=0.01, momentum=0.0)
+sgd.zero_grad()
 y.backward()
-print(x1.grad, w1.grad, x2.grad, w2.grad, b.grad, y.grad)
+sgd.step()
+
+print(w1, w2, b)
