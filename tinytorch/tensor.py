@@ -132,6 +132,8 @@ class Tensor:
                         (self.data**other.data) * np.log(self.data) * out.grad
                     )
 
+        return out
+
     def __truediv__(self, other):
         return self * (other**-1)
 
@@ -143,6 +145,51 @@ class Tensor:
 
         out._grad_fn = _grad_fn
 
+        return out
+
+    def log(self):
+        out = Tensor(np.log(self.data), (self,), requires_grad=self.requires_grad)
+
+        def _grad_fn():
+            self.grad += (1 / self.data) * out.grad
+
+        out._grad_fn = _grad_fn
+
+        return out
+
+    def mean(self, dim=None, keepdim=True):
+        out = Tensor(
+            np.mean(self.data, axis=dim, keepdims=keepdim),
+            (self,),
+            requires_grad=self.requires_grad,
+        )
+
+        def _grad_fn():
+            self.grad += (1 / self.data.size) * out.grad
+
+        out._grad_fn = _grad_fn
+        return out
+
+    def abs(self):
+        out = Tensor(np.abs(self.data), (self,), requires_grad=self.requires_grad)
+
+        def _grad_fn():
+            self.grad += (self.data / np.abs(self.data)) * out.grad
+
+        out._grad_fn = _grad_fn
+        return out
+
+    def sum(self, dim=None, keepdim=True):
+        out = Tensor(
+            np.sum(self.data, axis=dim, keepdims=keepdim),
+            (self,),
+            requires_grad=self.requires_grad,
+        )
+
+        def _grad_fn():
+            self.grad += np.ones_like(self.data) * out.grad
+
+        out._grad_fn = _grad_fn
         return out
 
     def view(self, shape):
@@ -169,9 +216,27 @@ class Tensor:
 
 def arange(start=0, end=None, step=1, requires_grad=False, dtype=np.float64):
     """
-        Similar to np.arange or torch.arange
+    Similar to np.arange or torch.arange
     """
     if end is None:
         end = start
         start = 0
     return Tensor(np.arange(start, end, step), requires_grad=requires_grad)
+
+
+def brodcast_tensors(tensor1, tensor2):
+    """
+    Brodcasts two tensors to the same shape
+    """
+    try:
+        data1 = tensor1.data
+        data2 = tensor2.data
+        expanded_t1, expanded_t2 = np.broadcast_arrays(data1, data2)
+
+        expanded_x = Tensor(expanded_t1, requires_grad=tensor1.requires_grad)
+        expanded_y = Tensor(expanded_t2, requires_grad=tensor2.requires_grad)
+
+    except ValueError as e:
+        print(f"Error: {e}")
+        return None, None
+    return expanded_x, expanded_y
