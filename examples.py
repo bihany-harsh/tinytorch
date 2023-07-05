@@ -2,23 +2,7 @@ from tinytorch import tensor
 import torch
 import numpy as np
 import tinytorch.optim as optim
-
-t1 = tensor.Tensor([[1, 2, 3], [4, 5, 6]])
-t2 = tensor.Tensor([1, 4, 7])
-# print(t1 + t2)
-# print(-t2)
-# print(t1 / t2)
-# print(t2 ** 2)
-
-torch_t1 = torch.tensor([[1, 2, 3], [4, 5, 6]])
-torch_t2 = torch.tensor([1, 4, 7])
-# print(torch_t1 * torch_t2)
-# print(-torch_t2)
-# print(torch_t1 / torch_t2)
-# print(torch_t2 ** 2)
-
-arr = tensor.arange(10)
-# print(arr)
+import tinytorch.nn.functional as F
 
 #######################
 # testing autograd
@@ -48,41 +32,70 @@ arr = tensor.arange(10)
 # ex_x, ex_y = tensor.brodcast_tensors(x, y)
 # print(ex_x, "\n", ex_y)
 
-
-import tinytorch.nn.functional as F
-
-x = tensor.Tensor([[1, 3, 6], [2, 4, 5]])
-
-torch_t1 = torch.tensor([[1, 3, 6], [2, 4, 5]], dtype=torch.float64)
-
-assert np.allclose(F.softmax(x, dim=1).data, torch.nn.functional.softmax(torch_t1, dim=1).data.numpy())
-assert np.allclose(F.log_softmax(x, dim=1).data, torch.nn.functional.log_softmax(torch_t1, dim=1).data.numpy())
-
-
 #######################
 # testing loss functions
 #######################
 
-# L1 loss
+# testing softmax function
+x = tensor.Tensor([[1, 1], [2, 2], [3, 3]])
+torch_t1 = torch.tensor([[1, 1], [2, 2], [3, 3]], dtype=torch.float64)
+assert np.allclose(F.softmax(x, dim=1).data, torch.nn.functional.softmax(torch_t1, dim=1).data.numpy())
+
+# testing log_softmax function
+x = tensor.Tensor([[0.2, 0.3], [0.4, 0.5], [0.6, 0.7]])
+torch_t1 = torch.tensor([[0.2, 0.3], [0.4, 0.5], [0.6, 0.7]], dtype=torch.float64)
+assert np.allclose(F.log_softmax(x, dim=1).data, torch.nn.functional.log_softmax(torch_t1, dim=1).data.numpy())
+
+# testing L1 loss function
 x = tensor.Tensor([[1, 3, 6], [2, 4, 5]])
-y = tensor.Tensor([[1, 2, 5], [2, 4, 5]])
-
+y = tensor.Tensor([[2, 4, 6], [3, 5, 7]])
 torch_t1 = torch.tensor([[1, 3, 6], [2, 4, 5]], dtype=torch.float64)
-torch_t2 = torch.tensor([[1, 2, 5], [2, 4, 5]], dtype=torch.float64)
-
+torch_t2 = torch.tensor([[2, 4, 6], [3, 5, 7]], dtype=torch.float64)
 assert np.allclose(F.l1_loss(x, y).data, torch.nn.functional.l1_loss(torch_t1, torch_t2).data.numpy())
 
-# MSE loss
-
+# testing MSE loss function
+x = tensor.Tensor([[1, 2], [3, 4], [5, 6]])
+y = tensor.Tensor([[2, 3], [4, 5], [6, 7]])
+torch_t1 = torch.tensor([[1, 2], [3, 4], [5, 6]], dtype=torch.float64)
+torch_t2 = torch.tensor([[2, 3], [4, 5], [6, 7]], dtype=torch.float64)
 assert np.allclose(F.mse_loss(x, y).data, torch.nn.functional.mse_loss(torch_t1, torch_t2).data.numpy())
 
-# NLL loss
-
+# testing NLL loss function
 x = tensor.Tensor([[1, 3, 6], [2, 4, 5]])
-y = tensor.Tensor([1, 2])
+y = tensor.Tensor([0, 1])
 log_probs = F.log_softmax(x, dim=1)
 torch_t1 = torch.tensor([[1, 3, 6], [2, 4, 5]], dtype=torch.float64)
-torch_t2 = torch.tensor([1, 2], dtype=torch.int64)
+torch_t2 = torch.tensor([0, 1], dtype=torch.int64)
 torch_log_probs = torch.nn.functional.log_softmax(torch_t1, dim=1)
-
 assert np.allclose(F.nll_loss(log_probs, y).data, torch.nn.functional.nll_loss(torch_log_probs, torch_t2).data.numpy())
+
+# testing Cross Entropy loss function
+x = tensor.Tensor([[1, 3, 6], [2, 4, 5]])
+y = tensor.Tensor([0, 1])
+torch_t1 = torch.tensor([[1, 3, 6], [2, 4, 5]], dtype=torch.float64)
+torch_t2 = torch.tensor([0, 1], dtype=torch.int64)
+assert np.allclose(F.cross_entropy(x, y).data, torch.nn.functional.cross_entropy(torch_t1, torch_t2).data.numpy())
+
+# testing softmax function on 3D data
+x = tensor.Tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+torch_t1 = torch.tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype=torch.float64)
+assert np.allclose(F.softmax(x, dim=1).data, torch.nn.functional.softmax(torch_t1, dim=1).data.numpy())
+
+# testing log_softmax function on 3D data
+x = tensor.Tensor([[[0.2, 0.3], [0.4, 0.5]], [[0.6, 0.7], [0.8, 0.9]]])
+torch_t1 = torch.tensor([[[0.2, 0.3], [0.4, 0.5]], [[0.6, 0.7], [0.8, 0.9]]], dtype=torch.float64)
+assert np.allclose(F.log_softmax(x, dim=1).data, torch.nn.functional.log_softmax(torch_t1, dim=1).data.numpy())
+
+# testing L1 loss function on 3D data
+x = tensor.Tensor([[[1, 3], [2, 4]], [[5, 7], [6, 8]]])
+y = tensor.Tensor([[[2, 4], [3, 5]], [[6, 8], [7, 9]]])
+torch_t1 = torch.tensor([[[1, 3], [2, 4]], [[5, 7], [6, 8]]], dtype=torch.float64)
+torch_t2 = torch.tensor([[[2, 4], [3, 5]], [[6, 8], [7, 9]]], dtype=torch.float64)
+assert np.allclose(F.l1_loss(x, y).data, torch.nn.functional.l1_loss(torch_t1, torch_t2).data.numpy())
+
+# testing MSE loss function on 3D data
+x = tensor.Tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+y = tensor.Tensor([[[2, 3], [4, 5]], [[6, 7], [8, 9]]])
+torch_t1 = torch.tensor([[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype=torch.float64)
+torch_t2 = torch.tensor([[[2, 3], [4, 5]], [[6, 7], [8, 9]]], dtype=torch.float64)
+assert np.allclose(F.mse_loss(x, y).data, torch.nn.functional.mse_loss(torch_t1, torch_t2).data.numpy())

@@ -16,7 +16,6 @@ def softmax(input: tensor.Tensor, dim=0):
 
 
 def log_softmax(input: tensor.Tensor, dim=0):
-    # use the softmax function above
     softmax_output = softmax(input, dim=dim)
     return softmax_output.log()
 
@@ -84,4 +83,16 @@ def nll_loss(input: tensor.Tensor, target: tensor.Tensor, reduction="mean"):
     else:
         raise ValueError("Invalid value for reduction")
     
+    return loss
+
+def cross_entropy(input: tensor.Tensor, target: tensor.Tensor, reduction="mean"):
+    """
+    Args:
+        input shape: (N, C, d1, d2...) : C is the number of classes
+        target shape: (N, d1, d2...)
+    Returns:
+        loss shape: shape based on reduction
+    """
+    log_softmax_output = log_softmax(input, dim=1)
+    loss = nll_loss(log_softmax_output, target, reduction=reduction)
     return loss
