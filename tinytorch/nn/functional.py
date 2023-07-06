@@ -12,8 +12,25 @@ def softmax(input: tensor.Tensor, dim=0):
     if dim >= len(input.shape):
         raise ValueError(f"dim should be less than the number of dimensions of input {len(input.shape)}")
     exp = input.exp()
-    return exp / exp.sum(dim=dim, keepdim=True)
+    exp /= exp.sum(dim=dim, keepdim=True)
+    
+    # def _grad_fn():
+    #     input.grad += (exp * (1 - exp) * exp.grad).data
 
+    def _grad_fn():
+        # Move the softmax dimension to the end
+        s = np.moveaxis(exp.data, dim, -1)
+        grad_exp = np.moveaxis(exp.grad, dim, -1)
+        jacobian = np.zeros(s.shape + s.shape[-1:])
+        for indices in np.ndindex(s.shape[:-1]):
+            s_slice = s[indices]
+            jacobian[indices] = np.diagflat(s_slice) - np.outer(s_slice, s_slice)
+        grad_input = np.einsum('...ij,...j->...i', jacobian, grad_exp)
+        grad_input = np.moveaxis(grad_input, -1, dim)
+        input.grad += grad_input
+
+    exp._grad_fn = _grad_fn
+    return exp
 
 def log_softmax(input: tensor.Tensor, dim=0):
     softmax_output = softmax(input, dim=dim)
@@ -66,11 +83,13 @@ def nll_loss(input: tensor.Tensor, target: tensor.Tensor, reduction="mean"):
         )
     
     # arrays used as indices must be integer (or boolean)s
-    loss = tensor.Tensor(
-        input.data[np.arange(input.shape[0]), target.data.astype(int)].reshape(-1),
-        (input, target),
-        requires_grad=input.requires_grad,
-    )
+    # loss = tensor.Tensor(
+    #     input.data[np.arange(input.shape[0]), target.data.astype(int)].reshape(-1, 1),
+    #     (input, target),
+    #     requires_grad=input.requires_grad,
+    # )
+
+    loss = input[tensor.arange(input.shape[0]), target.data.astype(int)]
 
     # loss.data should be a dimensionless array 
 

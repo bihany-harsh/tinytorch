@@ -106,6 +106,9 @@ class Tensor:
 
     def __sub__(self, other):
         return self + (-other)
+    
+    def __rsub__(self, other):
+        return  other + (-self)
 
     def __pow__(self, other):
         out = Tensor(0)
@@ -118,20 +121,22 @@ class Tensor:
         else:
             raise TypeError("Invalid data type for Tensor")
 
-        if isinstance(other, (int, float)):
-            if self.requires_grad:
-                self.grad += (other * (self.data ** (other - 1))) * out.grad
-        else:
-            if self.requires_grad or other.requires_grad:
+        def _grad_fn():
+            if isinstance(other, (int, float)):
                 if self.requires_grad:
-                    self.grad += (
-                        other.data * (self.data ** (other - 1).data)
-                    ) * out.grad
-                if other.requires_grad:
-                    other.grad += (
-                        (self.data**other.data) * np.log(self.data) * out.grad
-                    )
+                    self.grad += (other * (self.data ** (other - 1))) * out.grad
+            else:
+                if self.requires_grad or other.requires_grad:
+                    if self.requires_grad:
+                        self.grad += (
+                            other.data * (self.data ** (other - 1).data)
+                        ) * out.grad
+                    if other.requires_grad:
+                        other.grad += (
+                            (self.data**other.data) * np.log(self.data) * out.grad
+                        )
 
+        out._grad_fn = _grad_fn
         return out
 
     def __truediv__(self, other):
@@ -193,8 +198,81 @@ class Tensor:
         return out
 
     def view(self, shape):
+        original_shape = self.data.shape
         self.data = self.data.reshape(shape)
-        return self
+        out = Tensor(self.data, (self,), requires_grad=self.requires_grad)
+
+        def _grad_fn():
+            self.grad += out.grad.reshape(original_shape)
+
+        out._grad_fn = _grad_fn
+        return out
+    
+    def reshape(self, shape):
+        original_shape = self.data.shape
+        self.data = self.data.reshape(shape)
+        out = Tensor(self.data, (self,), requires_grad=self.requires_grad)
+
+        def _grad_fn():
+            self.grad += out.grad.reshape(original_shape)
+
+        out._grad_fn = _grad_fn
+        return out
+    
+    def flatten(self):
+        original_shape = self.data.shape
+        self.data = self.data.flatten()
+        out = Tensor(self.data, (self,), requires_grad=self.requires_grad)
+
+        def _grad_fn():
+            self.grad += out.grad.reshape(original_shape)
+
+        out._grad_fn = _grad_fn
+        return out
+    
+    def unsqueeze(self, dim):
+        self.data = np.expand_dims(self.data, dim)
+        out = Tensor(self.data, (self,), requires_grad=self.requires_grad)
+
+        def _grad_fn():
+            self.grad += np.squeeze(out.grad, axis=dim)
+
+        out._grad_fn = _grad_fn
+        return out
+
+    
+    def one_hot(self, num_classes):
+        data = np.zeros((self.data.size, num_classes))
+        data[np.arange(self.data.size), self.data.flatten().astype(int)] = 1        
+        out = Tensor(data.reshape((*self.data.shape, num_classes)), (self,), requires_grad=self.requires_grad)
+        def _grad_fn():
+            self.grad += out.reshape(self.shape) * out.grad
+        out._grad_fn = _grad_fn
+        return out
+    
+    def __getitem__(self, idx):
+        i, j = idx
+        if isinstance(i, int):
+            i = slice(i, i+1)
+        if isinstance(j, int):
+            j = slice(j, j+1)
+        if isinstance(i, Tensor):
+            i = i.data.astype(int)
+        if isinstance(j, Tensor):
+            j = j.data.astype(int)
+
+        data = self.data[i, j]
+        if isinstance(data, np.ndarray):
+            data = data.squeeze()
+        out = Tensor(data, (self,), requires_grad=self.requires_grad)
+
+        def _grad_fn():
+            self.grad[i, j] += out.grad
+        out._grad_fn = _grad_fn
+        return out
+
+    def __setitem__(self, idx, value):
+        self.data[idx] = value
 
     def backward(self):
         topo_order = []
@@ -214,7 +292,7 @@ class Tensor:
             t._grad_fn()
 
 
-def arange(start=0, end=None, step=1, requires_grad=False, dtype=np.float64):
+def arange(start=0, end=None, step=1, requires_grad=False, dtype=np.int64):
     """
     Similar to np.arange or torch.arange
     """
