@@ -33,6 +33,13 @@ class Tensor:
         self.grad = np.zeros_like(self.data)  # Tensor(, (), False, np.float64)
         self._grad_fn = lambda: None
 
+    @property
+    def T(self):
+        out = Tensor(self.data.T, (self,), requires_grad=self.requires_grad)
+        def _grad_fn():
+            self.grad += out.grad.T
+        out._grad_fn = _grad_fn
+
     def __repr__(self):
         return f"Tensor({self.data})"
 
@@ -98,6 +105,86 @@ class Tensor:
 
         return out
 
+    def __matmul__(self, other):
+        out = Tensor(0)
+        if isinstance(other, (list, int, float)):
+            raise TypeError(f"Invalid data type for @ {type(other)} and {type(self)}")
+        elif isinstance(other, np.ndarray):
+            if self.requires_grad:
+                raise RuntimeError("Requires grad is not supported for np.ndarray")
+            out = Tensor(self.data @ other, (self,), requires_grad=self.requires_grad)
+        elif isinstance(other, Tensor):
+            # 1. if both are 1D -> dot product
+            if (len(self.shape)==1 and len(other.shape)==1):
+                if self.shape[0] != other.shape[0]:
+                    raise TypeError("Invalid shape for Tensor")
+                out = Tensor(
+                    self.data @ other.data,
+                    (self, other),
+                    requires_grad=self.requires_grad or other.requires_grad,
+                )
+            # 2. if both are 2D -> matrix multiplication
+            elif (len(self.shape)==2 and len(other.shape)==2):
+                if self.shape[1] != other.shape[0]:
+                    raise TypeError("Invalid shape for Tensor")
+                out = Tensor(
+                    self.data @ other.data,
+                    (self, other),
+                    requires_grad=self.requires_grad or other.requires_grad,
+                )
+            # 3. if one is 1D and other is 2D -> matrix multiplication and result is 1D
+            elif (len(self.shape)==1 and len(other.shape)==2):
+                if self.shape[0] != other.shape[0]:
+                    raise TypeError("Invalid shape for Tensor")
+                out = Tensor(
+                    self.data @ other.data,
+                    (self, other),
+                    requires_grad=self.requires_grad or other.requires_grad,
+                )
+            # 4. if one is 2D and other is 1D -> matrix multiplication and result is 1D
+            elif (len(self.shape)==2 and len(other.shape)==1):
+                if self.shape[1] != other.shape[0]:
+                    raise TypeError("Invalid shape for Tensor")
+                out = Tensor(
+                    self.data @ other.data,
+                    (self, other),
+                    requires_grad=self.requires_grad or other.requires_grad,
+                )
+            # 5. broadcasting: (j x 1 x n x n) @ (k x n x n) -> (j x k x n x n) 
+            # and (j×1×n×m) @ (k×m×p) -> (j×k×n×p)
+            # if any of the dimensions are 1, then we can broadcast
+            else:
+                if self.shape[-1] != other.shape[-2]:
+                    raise TypeError("Invalid shape for Tensor")
+                # self_shape = self.shape
+                # other_shape = other.shape
+                # broadcast_shape = np.broadcast_shapes(self_shape, other_shape)
+                # if broadcast_shape is None:
+                #     raise TypeError("Incompatible shapes for broadcasting in matmul operation")
+                
+                out = Tensor(
+                    np.matmul(self.data, other.data),
+                    (self, other),
+                    requires_grad=self.requires_grad or other.requires_grad,
+                )
+        else:
+            raise TypeError("Invalid data type for Tensor")
+        
+        def _grad_fn():
+            if isinstance(other, np.ndarray):
+                if self.requires_grad:
+                    self.grad += other.T * out.grad
+            else:
+                if self.requires_grad or other.requires_grad:
+                    if self.requires_grad:
+                        self.grad += out.grad @ other.data.T
+                    if other.requires_grad:
+                        other.grad += self.data.T @ out.grad
+
+        out._grad_fn = _grad_fn
+        return out
+
+
     def __rmul__(self, other):
         return self * other
 
@@ -141,6 +228,46 @@ class Tensor:
 
     def __truediv__(self, other):
         return self * (other**-1)
+    
+    def __gt__(self, other):
+        if isinstance(other, (int, float)):
+            return Tensor(self.data > other)
+        elif isinstance(other, Tensor):
+            return Tensor(self.data > other.data)
+        else:
+            raise TypeError("Invalid data type for comparison")
+        
+    def __lt__(self, other):
+        if isinstance(other, (int, float)):
+            return Tensor(self.data < other)
+        elif isinstance(other, Tensor):
+            return Tensor(self.data < other.data)
+        else:
+            raise TypeError("Invalid data type for comparison")
+        
+    def __ge__(self, other):
+        if isinstance(other, (int, float)):
+            return Tensor(self.data >= other)
+        elif isinstance(other, Tensor):
+            return Tensor(self.data >= other.data)
+        else:
+            raise TypeError("Invalid data type for comparison")
+        
+    def __le__(self, other):
+        if isinstance(other, (int, float)):
+            return Tensor(self.data <= other)
+        elif isinstance(other, Tensor):
+            return Tensor(self.data <= other.data)
+        else:
+            raise TypeError("Invalid data type for comparison")
+        
+    # def __eq__(self, other):
+    #     if isinstance(other, (int, float)):
+    #         return Tensor((self.data == other).astype(int))
+    #     elif isinstance(other, Tensor):
+    #         return Tensor((self.data == other.data).astype(int))
+    #     else:
+    #         raise TypeError("Invalid data type for comparison")
 
     def exp(self):
         out = Tensor(np.exp(self.data), (self,), requires_grad=self.requires_grad)
@@ -274,6 +401,12 @@ class Tensor:
     def __setitem__(self, idx, value):
         self.data[idx] = value
 
+    def zero_grad(self):
+        self.grad = np.zeros_like(self.data)
+
+    def copy(self):
+        return Tensor(self.data.copy(), requires_grad=self.requires_grad)
+
     def backward(self):
         topo_order = []
         visited = set()
@@ -318,3 +451,19 @@ def brodcast_tensors(tensor1, tensor2):
         print(f"Error: {e}")
         return None, None
     return expanded_x, expanded_y
+
+
+def randn(shape: tuple, requires_grad=False):
+    """
+    Returns a tensor with normally distributed values
+    """
+    return Tensor(np.random.randn(*shape), requires_grad=requires_grad)
+
+def where(condition, x=None, y=None):
+    if x is None and y is None:
+        return np.where(condition.data)
+    else:
+        x_data = x.data if isinstance(x, Tensor) else x
+        y_data = y.data if isinstance(y, Tensor) else y
+        condition_data = condition.data if isinstance(condition, Tensor) else condition
+        return Tensor(np.where(condition_data, x_data, y_data))

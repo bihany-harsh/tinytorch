@@ -8,7 +8,7 @@ Tinytorch is a lightweight implementation of PyTorch, a popular deep learning fr
 - Automatic differentiation: Track gradients and perform backpropagation. ✅
 - Optimizer classes for carrying gradient descent and other optmization techniques. ✅
 - Basic loss calculation, NLL loss, MSE loss, CrossEntropy loss and such. ✅
-- Basic neural network modules: Implement layers such as Linear, ReLU, and CrossEntropyLoss. (tbd)
+- Basic neural network modules: Implement layers such as Linear, ReLU, and CrossEntropyLoss. ✅
 - Data management in batches, data module setup. (tbd)
 
 ## Getting Started

@@ -57,9 +57,9 @@ def mse_loss(input: tensor.Tensor, target: tensor.Tensor, reduction="mean"):
         raise ValueError("input and target must have the same shape")
     loss = (input - target) ** 2
     if reduction == "mean":
-        loss = loss.mean(dim=None, keepdim=True)
+        loss = loss.mean(dim=None, keepdim=False)
     elif reduction == "sum":
-        loss = loss.sum(dim=None, keepdim=True)
+        loss = loss.sum(dim=None, keepdim=False)
     elif reduction == "none":
         pass
     else:
@@ -82,12 +82,7 @@ def nll_loss(input: tensor.Tensor, target: tensor.Tensor, reduction="mean"):
             f"invalid input: {input.shape} and target shape: {target.shape}"
         )
     
-    # arrays used as indices must be integer (or boolean)s
-    # loss = tensor.Tensor(
-    #     input.data[np.arange(input.shape[0]), target.data.astype(int)].reshape(-1, 1),
-    #     (input, target),
-    #     requires_grad=input.requires_grad,
-    # )
+    # arrays used as indices must be integer (or boolean)
 
     loss = input[tensor.arange(input.shape[0]), target.data.astype(int)]
 

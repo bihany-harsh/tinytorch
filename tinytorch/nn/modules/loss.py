@@ -27,3 +27,29 @@ class MSELoss:
     def __repr__(self):
         return f"MSELoss(reduction={self.reduction})"
     
+class NLLLoss:
+    """
+    Negative Log Likelihood Loss
+    """
+    def __init__(self, reduction="mean"):
+        self.reduction = reduction
+
+    def __call__(self, input: tensor.Tensor, target: tensor.Tensor):
+        return F.nll_loss(input, target, reduction=self.reduction)
+
+    def __repr__(self):
+        return f"NLLLoss(reduction={self.reduction})"
+    
+class CrossEntropyLoss:
+    """
+    Cross Entropy Loss
+    """
+    def __init__(self, reduction="mean"):
+        self.reduction = reduction
+
+    def __call__(self, input: tensor.Tensor, target: tensor.Tensor):
+        return F.cross_entropy(input, target, reduction=self.reduction)
+
+    def __repr__(self):
+        return f"CrossEntropyLoss(reduction={self.reduction})"
+    
