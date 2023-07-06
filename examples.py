@@ -127,3 +127,15 @@ loss_probs = F.log_softmax(x, dim=2)
 loss = F.nll_loss(loss_probs.reshape((-1, loss_probs.shape[-1])), y.flatten(), reduction='mean')
 loss.backward()
 assert np.allclose(x.grad, torch_t1.grad.data.numpy())
+
+# backprop over Cross Entropy loss
+torch_t1 = torch.tensor([[1, 3, 6, 4], [2, 4, 5, 4], [2, 3, 1, 5]], dtype=torch.float64, requires_grad=True)
+target = torch.tensor([0, 1, 2], dtype=torch.int64)
+torch_loss = torch.nn.functional.cross_entropy(torch_t1, target, reduction='mean')
+torch_loss.backward()
+
+x = tensor.Tensor([[1, 3, 6, 4], [2, 4, 5, 4], [2, 3, 1, 5]], requires_grad=True)
+y = tensor.Tensor([0, 1, 2])
+loss = F.cross_entropy(x, y, reduction='mean')
+loss.backward()
+assert np.allclose(x.grad, torch_t1.grad.data.numpy())
