@@ -5,6 +5,7 @@ import tinytorch.optim as optim
 import tinytorch.nn.functional as F
 import tinytorch.nn.modules.loss as loss_module
 import tinytorch.nn.modules.activation as activation_module
+import tinytorch.nn.modules.linear as linear
 
 #######################
 # testing autograd
@@ -230,8 +231,8 @@ assert np.allclose(x.grad, torch_x.grad.data.numpy())
 # a tougher Test
 x = tensor.Tensor(
     [
-        [1, 2, 3, 4], 
-        [2, 3, 4, 5], 
+        [1, 2, 3, 4],
+        [2, 3, 4, 5],
     ],
     requires_grad=True,
 )
@@ -254,7 +255,95 @@ torch_loss.backward()
 assert np.allclose(x.grad, torch_x.grad.data.numpy())
 
 # just testing the ReLU
-# x = tensor.Tensor([[1, -1], [-1, 1]], requires_grad=True)
-# act = activation_module.ReLU()
-# y = act(x)
-# print(y)
+x = tensor.Tensor([[2, -1], [-1, 4]], requires_grad=True)
+relu = activation_module.ReLU()
+y = relu(x)
+torch_x = torch.tensor([[2, -1], [-1, 4]], dtype=torch.float64, requires_grad=True)
+torch_relu = torch.nn.ReLU()
+torch_y = torch_relu(torch_x)
+assert np.allclose(y.data, torch_y.data.numpy())
+tanh = activation_module.Tanh()
+y = tanh(x)
+torch_tanh = torch.nn.Tanh()
+torch_y = torch_tanh(torch_x)
+assert np.allclose(y.data, torch_y.data.numpy())
+
+# testing the backward pass of ReLU
+x = tensor.Tensor([[2, -1], [-1, 4]], requires_grad=True)
+relu = activation_module.ReLU()
+y = relu(x)
+y.backward()
+torch_x = torch.tensor([[2, -1], [-1, 4]], dtype=torch.float64, requires_grad=True)
+torch_relu = torch.nn.ReLU()
+torch_y = torch_relu(torch_x)
+torch_y.backward(torch.ones_like(torch_y))
+assert np.allclose(x.grad, torch_x.grad.data.numpy())
+
+# testing the backward pass of Tanh
+x = tensor.Tensor([[2, -1], [-1, 4]], requires_grad=True)
+tanh = activation_module.Tanh()
+y = tanh(x)
+y.backward()
+torch_x = torch.tensor([[2, -1], [-1, 4]], dtype=torch.float64, requires_grad=True)
+torch_tanh = torch.nn.Tanh()
+torch_y = torch_tanh(torch_x)
+torch_y.backward(torch.ones_like(torch_y))
+assert np.allclose(x.grad, torch_x.grad.data.numpy())
+
+
+# let's test the backward pass of a simple network
+xs = [
+    [2.0, 3.0, -1.0],
+    [3.0, -1.0, 0.5],
+    [0.5, 1.0, 1.0],
+    [1.0, 1.0, -1.0]
+]
+ys = [1.0, -1.0, -1.0, 1.0]
+X = tensor.Tensor(xs)
+Y = tensor.Tensor(ys)
+layer1 = linear.Linear(3, 1, bias=False)
+criterion = loss_module.MSELoss(reduction="mean")
+optimizer = optim.SGD(layer1.parameters(), lr=0.01, momentum=0.0)
+
+# forward pass
+out = layer1(X)
+loss = criterion(out, Y)
+print(f"before backward pass: {loss}")
+loss.backward()
+parameters = list(layer1.parameters())
+optimizer.step()
+out = layer1(X)
+loss = criterion(out, Y)
+print(f"after backward pass: {loss}")
+
+
+# on a deeper network
+xs = [
+    [2.0, 3.0, -1.0],
+    [3.0, -1.0, 0.5],
+    [0.5, 1.0, 1.0],
+    [1.0, 1.0, -1.0]
+]
+ys = [1.0, -1.0, -1.0, 1.0]
+X = tensor.Tensor(xs)
+Y = tensor.Tensor(ys)
+layer1 = linear.Linear(3, 2, bias=False)
+relu = activation_module.ReLU()
+layer2 = linear.Linear(2, 1, bias=False)
+criterion = loss_module.MSELoss(reduction="mean")
+parameters = list(layer1.parameters()) + list(layer2.parameters())
+optimizer = optim.SGD(parameters, lr=0.01, momentum=0.0)
+
+# forward pass
+out = layer1(X)
+out = relu(out)
+out = layer2(out)
+loss = criterion(out, Y)
+print(f"before backward pass: {loss}")
+loss.backward()
+optimizer.step()
+out = layer1(X)
+out = relu(out)
+out = layer2(out)
+loss = criterion(out, Y)
+print(f"after backward pass: {loss}")

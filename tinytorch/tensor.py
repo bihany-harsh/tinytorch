@@ -24,6 +24,8 @@ class Tensor:
             self.data = data
         elif isinstance(data, (int, float)):
             self.data = np.array(data)
+        elif isinstance(data, np.bool_):
+            self.data = np.array(data).astype(np.uint8)
         else:
             raise TypeError("Invalid data type for Tensor")
         self.shape = list(self.data.shape)
@@ -39,6 +41,7 @@ class Tensor:
         def _grad_fn():
             self.grad += out.grad.T
         out._grad_fn = _grad_fn
+        return out
 
     def __repr__(self):
         return f"Tensor({self.data})"
@@ -271,22 +274,16 @@ class Tensor:
 
     def exp(self):
         out = Tensor(np.exp(self.data), (self,), requires_grad=self.requires_grad)
-
         def _grad_fn():
             self.grad += out.data * out.grad
-
         out._grad_fn = _grad_fn
-
         return out
 
     def log(self):
         out = Tensor(np.log(self.data), (self,), requires_grad=self.requires_grad)
-
         def _grad_fn():
             self.grad += (1 / self.data) * out.grad
-
         out._grad_fn = _grad_fn
-
         return out
 
     def mean(self, dim=None, keepdim=True):
@@ -366,7 +363,19 @@ class Tensor:
 
         out._grad_fn = _grad_fn
         return out
+    
+    def squeeze(self, dim=None):
+        self.data = np.squeeze(self.data, axis=dim)
+        out = Tensor(self.data, (self,), requires_grad=self.requires_grad)
 
+        def _grad_fn():
+            if dim is None:
+                self.grad += np.expand_dims(out.grad, axis=1)
+            else:
+                self.grad += out.grad
+
+        out._grad_fn = _grad_fn
+        return out
     
     def one_hot(self, num_classes):
         data = np.zeros((self.data.size, num_classes))
@@ -457,9 +466,9 @@ def randn(shape: tuple, requires_grad=False):
     """
     Returns a tensor with normally distributed values
     """
-    return Tensor(np.random.randn(*shape), requires_grad=requires_grad)
+    return Tensor(np.random.randn(*shape) * 0.1, requires_grad=requires_grad)
 
-def where(condition, x=None, y=None):
+def where(condition, x=0, y=1):
     if x is None and y is None:
         return np.where(condition.data)
     else:

@@ -1,21 +1,41 @@
+from tinytorch.nn import functional as F
+
 class ReLU:
     def __init__(self):
-        self.mask = None
-    
-    def forward(self, x):
-        self.mask = (x <= 0)
-        out = x.copy()
-        print(self.mask)
-        out[self.mask] = 0
+        pass
 
-        def _grad_fn():
-            grad = out.copy()
-            grad[self.mask] = 0
-            return grad        
-        return out
-    
-    def __repr__(self):
-        return 'ReLU()'
-    
     def __call__(self, x):
-        return self.forward(x)
+        self.x = x
+        return F.relu(x)
+    
+class Tanh:
+    def __init__(self):
+        pass
+
+    def __call__(self, x):
+        self.x = x
+        return F.tanh(x)
+    
+class Sigmoid:
+    def __init__(self):
+        pass
+
+    def __call__(self, x):
+        self.x = x
+        return F.sigmoid(x)
+
+class Softmax:
+    def __init__(self):
+        pass
+
+    def __call__(self, x):
+        self.x = x
+        return F.softmax(x)
+    
+class LogSoftmax:
+    def __init__(self):
+        pass
+
+    def __call__(self, x):
+        self.x = x
+        return F.log_softmax(x)

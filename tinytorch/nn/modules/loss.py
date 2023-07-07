@@ -22,6 +22,10 @@ class MSELoss:
         self.reduction = reduction
 
     def __call__(self, input: tensor.Tensor, target: tensor.Tensor):
+        # return F.mse_loss(input, target, reduction=self.reduction)
+        # checking shape: if shape is (n, 1) or (1, n), then squeeze it
+        if input.shape == [target.shape[0], 1]:
+            input = input.squeeze()
         return F.mse_loss(input, target, reduction=self.reduction)
 
     def __repr__(self):

@@ -9,7 +9,12 @@ Tinytorch is a lightweight implementation of PyTorch, a popular deep learning fr
 - Optimizer classes for carrying gradient descent and other optmization techniques. ✅
 - Basic loss calculation, NLL loss, MSE loss, CrossEntropy loss and such. ✅
 - Basic neural network modules: Implement layers such as Linear, ReLU, and CrossEntropyLoss. ✅
-- Data management in batches, data module setup. (tbd)
+
+## What's next:
+
+- Data management in batches, data module setup.
+- Sequential API
+- Temporal architecture
 
 ## Getting Started
 
@@ -17,3 +22,15 @@ Tinytorch is a lightweight implementation of PyTorch, a popular deep learning fr
 
 - Python 3.6 or above
 - Numpy 1.24 or above
+
+### Installation
+
+- To setup `tinytorch` clone the repo, navigate to the directory containing `setup.py` file and then run the following command: <br/>
+
+```sh
+pip install -e .
+```
+
+Before installing, make sure your environment meets the prerequisites mentioned above. If you encounter any issues during installation, feel free to raise an issue on our GitHub repository.
+
+Enjoy using Tinytorch!

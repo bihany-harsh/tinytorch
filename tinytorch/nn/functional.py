@@ -110,3 +110,24 @@ def cross_entropy(input: tensor.Tensor, target: tensor.Tensor, reduction="mean")
     log_softmax_output = log_softmax(input, dim=1)
     loss = nll_loss(log_softmax_output, target, reduction=reduction)
     return loss
+
+def relu(input: tensor.Tensor):
+    out = tensor.where(input > 0, input, 0)
+    def _grad_fn():
+        input.grad += (input > 0).data * out.grad
+    out._grad_fn = _grad_fn
+    return out
+
+def tanh(input: tensor.Tensor):
+    out = (input.exp() - (-input).exp()) / (input.exp() + (-input).exp())
+    def _grad_fn():
+        input.grad += (1 - out.data ** 2) * out.grad
+    out._grad_fn = _grad_fn
+    return out
+
+def sigmoid(input: tensor.Tensor):
+    out = 1 / (1 + (-input).exp())
+    def _grad_fn():
+        input.grad += (out * (1 - out) * out.grad).data
+    out._grad_fn = _grad_fn
+    return out

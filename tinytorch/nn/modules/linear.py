@@ -2,18 +2,26 @@ import numpy as np
 import tinytorch.tensor as tensor
 
 class Linear:
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=True, random_state=None):
         self.in_features = in_features
         self.out_features = out_features
+        if random_state is not None:
+            np.random.seed(random_state)       
 
-        self.weights = tensor.randn((out_features, in_features), requires_grad=True)
+        if out_features == 1:
+            self.weights = tensor.randn((in_features,), requires_grad=True)     
+        else:
+            self.weights = tensor.randn((out_features, in_features), requires_grad=True)
         if bias:
             self.bias = tensor.randn((out_features, ), requires_grad=True)
         else:
             self.bias = None
 
     def forward(self, x):
-        out = x @ self.weights.T + self.bias
+        if self.bias is not None:
+            out = x @ self.weights.T + self.bias
+        else:
+            out = x @ self.weights.T
         return out
     
     def __repr__(self):
