@@ -4,9 +4,9 @@ Tinytorch is a lightweight implementation of PyTorch, a popular deep learning fr
 
 ## Features
 
-- Tensor operations: Perform mathematical operations on multi-dimensional arrays. ✅
+- Tensor operations: Perform mathematical operations on multidimensional arrays. ✅
 - Automatic differentiation: Track gradients and perform backpropagation. ✅
-- Optimizer classes for carrying gradient descent and other optmization techniques. ✅
+- Optimizer classes for carrying gradient descent and other optimization techniques. ✅
 - Basic loss calculation, NLL loss, MSE loss, CrossEntropy loss and such. ✅
 - Basic neural network modules: Implement layers such as Linear, ReLU, and CrossEntropyLoss. ✅
 
