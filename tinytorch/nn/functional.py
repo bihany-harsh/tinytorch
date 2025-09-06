@@ -6,30 +6,10 @@ def softmax(input: tensor.Tensor, dim=0):
     Args:
         input shape: (d1, d2, d3 ...)
         dim: the dimension to apply softmax
-    Returns:
-        output shape: (d1, d2, d3 ...) where the values along dim sum to 1
     """
-    if dim >= len(input.shape):
-        raise ValueError(f"dim should be less than the number of dimensions of input {len(input.shape)}")
-    exp = input.exp()
-    exp /= exp.sum(dim=dim, keepdim=True)
-    
-    # def _grad_fn():
-    #     input.grad += (exp * (1 - exp) * exp.grad).data
-
-    def _grad_fn():
-        # Move the softmax dimension to the end
-        s = np.moveaxis(exp.data, dim, -1)
-        grad_exp = np.moveaxis(exp.grad, dim, -1)
-        jacobian = np.zeros(s.shape + s.shape[-1:])
-        for indices in np.ndindex(s.shape[:-1]):
-            s_slice = s[indices]
-            jacobian[indices] = np.diagflat(s_slice) - np.outer(s_slice, s_slice)
-        grad_input = np.einsum('...ij,...j->...i', jacobian, grad_exp)
-        grad_input = np.moveaxis(grad_input, -1, dim)
-        input.grad += grad_input
-
-    exp._grad_fn = _grad_fn
+    exp = (input - input.max(dim=dim, keepdim=True)).exp()
+    sum = exp.sum(dim=dim, keepdim=True)
+    exp /= sum
     return exp
 
 def log_softmax(input: tensor.Tensor, dim=0):
@@ -72,8 +52,6 @@ def nll_loss(input: tensor.Tensor, target: tensor.Tensor, reduction="mean"):
     Args:
         input shape: (N, C, d1, d2...) : C is the number of classes
         target shape: (N, d1, d2...)
-    Returns:
-        loss shape: shape based on reduction
     """
     if input.shape[0] != target.shape[0]:
         raise ValueError("input and target must have the same batch size")
@@ -84,16 +62,18 @@ def nll_loss(input: tensor.Tensor, target: tensor.Tensor, reduction="mean"):
     
     # arrays used as indices must be integer (or boolean)
 
-    loss = input[tensor.arange(input.shape[0]), target.data.astype(int)]
+    row_indices = np.arange(input.shape[0])
+    col_indices = target.data.astype(int)
+    loss = input[row_indices, col_indices]
 
-    # loss.data should be a dimensionless array 
 
+    # loss.data should be a dimensionless array
     if reduction == "mean":
         loss = -loss.mean(dim=None, keepdim=False)
     elif reduction == "sum":
         loss = -loss.sum(dim=None, keepdim=False)
     elif reduction == "none":
-        pass
+        loss = -loss
     else:
         raise ValueError("Invalid value for reduction")
     
@@ -104,8 +84,6 @@ def cross_entropy(input: tensor.Tensor, target: tensor.Tensor, reduction="mean")
     Args:
         input shape: (N, C, d1, d2...) : C is the number of classes
         target shape: (N, d1, d2...)
-    Returns:
-        loss shape: shape based on reduction
     """
     log_softmax_output = log_softmax(input, dim=1)
     loss = nll_loss(log_softmax_output, target, reduction=reduction)
@@ -113,21 +91,12 @@ def cross_entropy(input: tensor.Tensor, target: tensor.Tensor, reduction="mean")
 
 def relu(input: tensor.Tensor):
     out = tensor.where(input > 0, input, 0)
-    def _grad_fn():
-        input.grad += (input > 0).data * out.grad
-    out._grad_fn = _grad_fn
     return out
 
 def tanh(input: tensor.Tensor):
     out = (input.exp() - (-input).exp()) / (input.exp() + (-input).exp())
-    def _grad_fn():
-        input.grad += (1 - out.data ** 2) * out.grad
-    out._grad_fn = _grad_fn
     return out
 
 def sigmoid(input: tensor.Tensor):
-    out = 1 / (1 + (-input).exp())
-    def _grad_fn():
-        input.grad += (out * (1 - out) * out.grad).data
-    out._grad_fn = _grad_fn
+    out = (1.0 + (-input).exp())**(-1)
     return out

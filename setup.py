@@ -1,6 +1,6 @@
 import setuptools
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
@@ -12,11 +12,13 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/bihany-harsh/tinytorch",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=["tests*", "examples*"]),
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
-    install_requires=['numpy']
+    python_requires=">=3.8",
+    install_requires=[
+        "numpy",
+    ],
 )

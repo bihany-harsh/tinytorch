@@ -65,6 +65,10 @@ class Tensor:
         self.grad = None
         self._grad_fn = lambda: None
         
+        # for reduction operations like max, min, maximum
+        self.indices = None
+        
+        
     def _init_grad(self):
         # allocate .grad if missing lazily
         if self.grad is None:
@@ -85,7 +89,10 @@ class Tensor:
 
 
     def __repr__(self):
-        return f"Tensor({self.data!r}, requires_grad={self.requires_grad})"
+        if self.indices is not None:
+            return f"Tensor({self.data!r}, requires_grad={self.requires_grad}, indices={self.indices})"
+        else:
+            return f"Tensor({self.data!r}, requires_grad={self.requires_grad})"
     
     # ELEMENTAL OPERATIONS
     
@@ -211,17 +218,65 @@ class Tensor:
         return out
     
     def mean(self, dim=None, keepdim=False):
-        out = Tensor(np.mean(self.data, axis=dim, keepdims=keepdim), (self,), requires_grad=self.requires_grad)
+        total = self.sum(dim=dim, keepdim=keepdim)
+        n = self.data.size / total.data.size if dim is None else self.shape[dim]
+        return total / n
+    
+    def max(self, dim=None, keepdim=False):
+        val = np.max(self.data, axis=dim, keepdims=keepdim)
+        indices = np.argmax(self.data, axis=dim, keepdims=keepdim)
+        out = Tensor(val, (self,), requires_grad=self.requires_grad)
+        out.indices = indices
         
         def _grad_fn():
             if self.requires_grad:
                 self._init_grad()
-                n = self.data.size / out.data.size
-                grad = (1.0 / n) * out.grad
-                if dim is not None and not keepdim:
-                    grad = np.expand_dims(grad, axis=dim)
+                grad_input = np.zeros_like(self.data, dtype=self.dtype)
+                
+                grad_out = out.grad
+                idx = out.indices
+                
+                if dim is None:
+                    # Global max case: indices is a scalar, need to handle differently
+                    grad_input.flat[idx] = grad_out
+                else:
+                    # Specific dimension case
+                    if not keepdim:
+                        grad_out = np.expand_dims(grad_out, axis=dim)
+                        idx = np.expand_dims(idx, axis=dim)
+                        
+                    np.put_along_axis(grad_input, idx, grad_out, axis=dim)
+                    
+                self.grad += grad_input
+                
+        out._grad_fn = _grad_fn
+        return out
+    
+    def min(self, dim=None, keepdim=False):
+        val = np.min(self.data, axis=dim, keepdims=keepdim)
+        indices = np.argmin(self.data, axis=dim, keepdims=keepdim)
+        out = Tensor(val, (self,), requires_grad=self.requires_grad)
+        out.indices = indices
 
-                self.grad += np.broadcast_to(grad, self.shape)
+        def _grad_fn():
+            if self.requires_grad:
+                self._init_grad()
+                grad_input = np.zeros_like(self.data, dtype=self.dtype)
+                
+                grad_out = out.grad
+                idx = out.indices
+                
+                if dim is None:
+                    grad_input.flat[idx] = grad_out
+                else:
+                    if not keepdim:
+                        grad_out = np.expand_dims(grad_out, axis=dim)
+                        idx = np.expand_dims(idx, axis=dim)
+                        
+                    np.put_along_axis(grad_input, idx, grad_out, axis=dim)
+                    
+                self.grad += grad_input
+                
         out._grad_fn = _grad_fn
         return out
 
@@ -255,6 +310,29 @@ class Tensor:
         out._grad_fn = _grad_fn
         return out
     
+    # CREDITS: gemini-pro-2.5
+    def maximum(self, other):
+        other_tensor = other if isinstance(other, Tensor) else Tensor(other)
+        out_data = np.maximum(self.data, other_tensor.data)
+        out = Tensor(out_data, (self, other_tensor), requires_grad=self.requires_grad or other_tensor.requires_grad)
+
+        def _grad_fn():
+            if self.requires_grad:
+                self._init_grad()
+                # Grad is 1 where self > other, 0.5 where self == other, 0 where self < other
+                mask = (self.data >= other_tensor.data).astype(self.dtype)
+                mask[self.data == other_tensor.data] = 0.5
+                self.grad += _unbroadcast(mask * out.grad, self.shape)
+            if other_tensor.requires_grad:
+                other_tensor._init_grad()
+                # Grad is 1 where other > self, 0.5 where self == other, 0 where other < self
+                mask = (other_tensor.data >= self.data).astype(other_tensor.dtype)
+                mask[other_tensor.data == self.data] = 0.5
+                other_tensor.grad += _unbroadcast(mask * out.grad, other_tensor.shape)
+
+        out._grad_fn = _grad_fn
+        return out
+    
     # SHAPE OPERATIONS
     
     def _view_like(self, new_data):
@@ -275,6 +353,10 @@ class Tensor:
     # INDEXING
     
     def __getitem__(self, idx):
+        
+        if isinstance(idx, Tensor):
+            raise NotImplementedError("support for idx to be Tensor object not present yet, please pass either a numpy array or a python list")
+        
         out = Tensor(self.data[idx], (self,), requires_grad=self.requires_grad)
         def _grad_fn():
             if self.requires_grad:
@@ -314,6 +396,8 @@ class Tensor:
         if gradient is None:
             self.grad.fill(1.0)
         else:
+            if isinstance(gradient, Tensor):
+                gradient = gradient.data
             if not isinstance(gradient, np.ndarray):
                 gradient = np.array(gradient, dtype=self.dtype)
             if gradient.shape != self.data.shape:
@@ -352,8 +436,32 @@ def randn(shape: tuple, requires_grad=False):
     """
     return Tensor(np.random.randn(*shape) * 0.1, requires_grad=requires_grad)
 
+# CREDITS: (claude-4.0-sonnet)
 def where(condition, x=0, y=1):
-    cond = Tensor._data(condition)
-    x_d = Tensor._data(x)
-    y_d = Tensor._data(y)
-    return Tensor(np.where(cond, x_d, y_d))
+    cond = condition if isinstance(condition, Tensor) else Tensor(condition)
+    x_tensor = x if isinstance(x, Tensor) else Tensor(x)
+    y_tensor = y if isinstance(y, Tensor) else Tensor(y)
+    
+    # Compute the output
+    out_data = np.where(cond.data, x_tensor.data, y_tensor.data)
+    out = Tensor(out_data, (x_tensor, y_tensor), 
+                 requires_grad=x_tensor.requires_grad or y_tensor.requires_grad)
+    
+    def _grad_fn():
+        if x_tensor.requires_grad:
+            x_tensor._init_grad()
+            # Gradient flows to x where condition is True
+            x_mask = cond.data.astype(x_tensor.dtype)
+            x_grad = x_mask * out.grad
+            x_tensor.grad += _unbroadcast(x_grad, x_tensor.shape)
+            
+        if y_tensor.requires_grad:
+            y_tensor._init_grad()
+            # Gradient flows to y where condition is False
+            # Use logical_not instead of bitwise invert
+            y_mask = np.logical_not(cond.data).astype(y_tensor.dtype)
+            y_grad = y_mask * out.grad
+            y_tensor.grad += _unbroadcast(y_grad, y_tensor.shape)
+    
+    out._grad_fn = _grad_fn
+    return out
