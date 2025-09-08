@@ -1,3 +1,3 @@
-from .optim import SGD
+from .optim import SGD, RMSprop, Adam
 
 __all__ = ["SGD"]
