@@ -57,3 +57,17 @@ class CrossEntropyLoss:
     def __repr__(self):
         return f"CrossEntropyLoss(reduction={self.reduction})"
     
+class KLDivLoss:
+    """
+    KL Divergence
+    """
+    def __init__(self, reduction="mean", log_target=False):
+        self.reduction = reduction
+        self.log_target = log_target
+    
+    def __call__(self, input: tensor.Tensor, target: tensor.Tensor):
+        return F.kl_div(input, target, reduction=self.reduction, log_target=self.log_target)
+    
+    def __repr__(self):
+        return f"KLDivLoss(reduction={self.reduction}, log_target={self.log_target})"
+    

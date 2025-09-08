@@ -352,6 +352,11 @@ class Tensor:
     
     # INDEXING
     
+    def size(self, idx):
+        if idx >= len(self.shape):
+            return ValueError(f"idx={idx} greater than bounds")
+        return self.shape[idx]
+    
     def __getitem__(self, idx):
         
         if isinstance(idx, Tensor):

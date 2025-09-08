@@ -1,5 +1,5 @@
 # base class for all optimizers
-from .tensor import Tensor
+from ..tensor import Tensor
 from typing import List
 import numpy as np
 
@@ -28,7 +28,7 @@ class SGD(Optimizer):
         self.momentum = momentum
         if not 0 <= self.momentum < 1:
             raise ValueError("Invalid momentum value. Must be in range [0, 1]")
-        self.velocity = [0 for _ in range(len(parameters))]
+        self.velocity = [0.0 for _ in range(len(parameters))]
 
     def step(self):
         for i, param in enumerate(self.parameters):

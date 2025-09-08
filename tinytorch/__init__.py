@@ -1,3 +1,3 @@
-from . import nn
-from .optim import SGD
 from .tensor import Tensor
+from . import optim
+from . import nn
