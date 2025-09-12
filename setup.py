@@ -12,7 +12,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/bihany-harsh/tinytorch",
-    packages=setuptools.find_packages(exclude=["tests*", "examples*"]),
+    packages=setuptools.find_packages(exclude=("tests", "examples", "*.egg-info")),
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",

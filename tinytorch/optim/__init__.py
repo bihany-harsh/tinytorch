@@ -1,3 +1,7 @@
-from .optim import SGD, RMSprop, Adam
+"""
+Optimization algorithms (tinytorch.optim).
+"""
 
-__all__ = ["SGD"]
+from .optim import Optimizer, SGD, RMSprop, Adam
+
+__all__ = ["Optimizer", "SGD", "RMSprop", "Adam"]

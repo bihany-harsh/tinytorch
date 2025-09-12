@@ -76,6 +76,9 @@ class Tensor:
             
     def __hash__(self):
         return id(self)
+    
+    def numel(self):
+        return self.data.size
 
     @property
     def T(self):

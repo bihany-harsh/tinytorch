@@ -1,38 +1,17 @@
-import numpy as np
-import tinytorch.tensor as tensor
+from .module import Module
+from tinytorch import tensor
 
-class Linear:
-    def __init__(self, in_features, out_features, bias=True, random_state=None):
-        self.in_features = in_features
-        self.out_features = out_features
-        if random_state is not None:
-            np.random.seed(random_state)       
-
-        if out_features == 1:
-            self.weights = tensor.randn((in_features,), requires_grad=True)     
-        else:
-            self.weights = tensor.randn((out_features, in_features), requires_grad=True)
-        if bias:
-            self.bias = tensor.randn((out_features, ), requires_grad=True)
-        else:
-            self.bias = None
-
+class Linear(Module):
+    def __init__(self, in_features, out_features, bias=True):
+        super().__init__()
+        self.weight = tensor.randn((out_features, in_features), requires_grad=True)
+        self.bias = tensor.randn((out_features,), requires_grad=True) if bias else None
+        
     def forward(self, x):
-        if self.bias is not None:
-            out = x @ self.weights.T + self.bias
-        else:
-            out = x @ self.weights.T
-        return out
+        y = x @ self.weight.T
+        return y + self.bias if self.bias is not None else y
     
-    def __repr__(self):
-        return f"Linear(in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None})"
-    
-    def __call__(self, x):
-        return self.forward(x)
-    
-    def parameters(self):
-        return [self.weights] + ([self.bias] if self.bias is not None else [])
-    
-    def zero_grad(self):
-        for param in self.parameters():
-            param.zero_grad()
+    def __repr__(self) -> str:
+        return (f"Linear(in_features={self.weight.shape[1]}, "
+                f"out_features={self.weight.shape[0]}, "
+                f"bias={self.bias is not None})")

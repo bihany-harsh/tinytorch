@@ -1,6 +1,8 @@
 import numpy as np
 from tinytorch import tensor
 
+__all__ = ["softmax", "log_softmax", "l1_loss", "mse_loss", "nll_loss", "cross_entropy", "kl_div", "relu", "tanh", "sigmoid"]
+
 def softmax(input: tensor.Tensor, dim=0):
     """
     Args:
