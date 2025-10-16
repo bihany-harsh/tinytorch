@@ -5,3 +5,4 @@
 *.log
 .pytest_cache
 tinytorch.egg-info/
+*.pkl

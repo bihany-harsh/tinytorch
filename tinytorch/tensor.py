@@ -68,7 +68,6 @@ class Tensor:
         # for reduction operations like max, min, maximum
         self.indices = None
         
-        
     def _init_grad(self):
         # allocate .grad if missing lazily
         if self.grad is None:

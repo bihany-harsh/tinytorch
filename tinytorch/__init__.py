@@ -3,6 +3,7 @@ Top-level namespace for TinyTorch.
 """
 
 from .tensor import Tensor
+from .util import save, load
 
 # ---- nn sub-package -------------------------------------------------
 from . import nn
@@ -30,7 +31,8 @@ from .optim.optim import (
 # What will be imported on `from tinytorch import *`
 __all__ = [
     "Tensor",
-    # nn
+    "save",
+    "load",
     "nn",
     "F",
     "Module",

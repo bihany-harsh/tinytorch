@@ -1,5 +1,22 @@
+import numpy as np
 from tinytorch import tensor
 from collections import OrderedDict
+
+class Parameter(tensor.Tensor):
+    def __init__(self, data, requires_grad=True, dtype=np.float64):
+        if isinstance(data, tensor.Tensor):
+            data_array = data.data
+            if dtype == np.float64 and hasattr(data, 'dtype'):
+                dtype = data.dtype
+        elif isinstance(data, np.ndarray):
+            data_array = data
+        else:
+            raise TypeError("Parameter data must be a numpy array or a Tensor")
+        
+        super().__init__(data_array, requires_grad=requires_grad, dtype=dtype)
+    
+    def __repr__(self):
+        return f"Parameter containing:\n{super().__repr__()}"
 
 class Module:
     def __init__(self):
@@ -10,7 +27,6 @@ class Module:
         object.__setattr__(self, "_training", True)
     
     # CORE API
-        
     def forward(self, *args, **kwargs):
         raise NotImplementedError("Subclasses must implement the forward pass")
     
@@ -80,6 +96,7 @@ class Module:
         # buffers
         for name, tgt in self.named_buffers():
             if name in sd:
+                print(f"Loading buffer: {name}")
                 self._assign(tgt, sd[name])
             else:
                 missing.append(name)
@@ -90,8 +107,7 @@ class Module:
                       and k not in dict(self.named_buffers())]
 
         if missing or unexpected:
-            print("load_state_dict warnings:",
-                  "missing", missing, "unexpected", unexpected)
+            print(f"Module::load_state_dict warnings\n missing: {missing}\n unexpected: {unexpected}")
     
     @staticmethod
     def _assign(dst, src):
@@ -132,10 +148,11 @@ class Module:
             return self._buffers[name]
         if name in self._modules:
             return self._modules[name]
+        # TODO: check the validity of these exhaustive conditions
         raise AttributeError(f"{type(self).__name__} has no attribute {name!r}")
     
     # tinytorch/nn/module.py
-    def __repr__(self) -> str:
+    def __repr__(self):
         main_str = self._get_name() + '('
         child_lines = []
         for key, module in self._modules.items():
