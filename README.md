@@ -10,10 +10,11 @@ Tinytorch is a lightweight implementation of PyTorch, a popular deep learning fr
 - Basic loss calculation, NLL loss, MSE loss, CrossEntropy loss and such. ✅
 - Basic neural network modules: Implement layers such as Linear, activations like ReLU present. ✅
 - Support for Modules and Parameters ✅
+- Saving `state_dict()` functionality for Modules and Optimizers. ✅
 
 ## What's next:
 
-- Saving `state_dict()` functionality for Modules and Optimizers.
+- Support to print computation graph
 - Temporal architecture
 - Schedulers
 - Data management in batches, data module setup.
